@@ -121,6 +121,27 @@ any `task_insert` configuration above. This strongly suggests the deadlock lives
 in `starpu_mpi_task_insert`'s automatic ownership-tracking/transfer-inference logic (or in how
 it drives the same underlying comm engine), not in StarPU-MPI's point-to-point transport itself.
 
+### Independently re-confirmed (2026-08-24)
+
+All of the above was re-run from scratch on the same machine (system StarPU 1.4.3 package, plus
+a separate Spack build of StarPU 1.4.7 / Open MPI 4.1.7). Every config reproduced the same
+failure pattern: clean on `-n 1`, hangs only on cross-rank `task_insert` runs, zero hangs on
+`main_detached`, zero crashes and zero data-correctness mismatches anywhere.
+
+| Config | Original | Re-run |
+|---|---|---|
+| StarPU 1.4.3, `-n 1` (control) | 15/15 clean | 15/15 clean |
+| StarPU 1.4.3, `-n 2 --nt 8 --nsteps 200` | 30/35 clean, 14% hung | 13/15 clean, 13% hung |
+| StarPU 1.4.3, `-n 2 --nt 8 --nsteps 1000` | 11/15 clean, 27% hung | 14/15 clean, 7% hung |
+| StarPU 1.4.3, `-n 4 --nt 32 --nsteps 300` | 2/12 clean, 83% hung | 2/12 clean, 83% hung |
+| StarPU 1.4.7, `-n 2 --nt 8 --nsteps 200` | 11/20 clean, 45% hung | 19/20 clean, 5% hung |
+| StarPU 1.4.7, `-n 4 --nt 32 --nsteps 300` | 0/8 clean, 100% hung | 2/8 clean, 75% hung |
+| `main_detached`, StarPU 1.4.3, `-n 2 --nt 8 --nsteps 200` | 20/20 clean | 20/20 clean |
+
+Hang rates differ from the original run, as expected for a race condition, but the qualitative
+signature is identical across both runs: cross-rank-only, `task_insert`-specific, rate increasing
+with rank/tile count.
+
 **Not a known issue on the GitHub mirror.** The StarPU GitLab tracker (where development happens)
 was unreachable, so the 57 issues on the `starpu-runtime/starpu` GitHub mirror were checked
 instead. None report this cross-rank `starpu_mpi_task_insert` deadlock. The closest matches are
