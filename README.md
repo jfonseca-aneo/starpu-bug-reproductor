@@ -146,3 +146,10 @@ with rank/tile count.
 was unreachable, so the 57 issues on the `starpu-runtime/starpu` GitHub mirror were checked
 instead. None report this cross-rank `starpu_mpi_task_insert` deadlock. The closest matches are
 unrelated performance/scalability complaints about MPI LU (#7, #14, #19).
+
+## Root cause and proposed fix
+
+Found and empirically validated by reading the StarPU source and instrumenting a live hang: a
+genuine deadlock in `starpu_mpi_barrier()`, flagged by StarPU's own maintainers as an unresolved
+`FIXME` in the exact function. Full writeup, evidence trail, and a validated workaround (12/12
+clean at a config that hung 75-100% of the time beforehand) in [ROOT_CAUSE.md](ROOT_CAUSE.md).
